@@ -1,0 +1,70 @@
+# Health Check
+curl -X GET http://localhost:3000/health
+
+# Get All Products - With filter
+curl -X GET "http://localhost:3000/api/products?start=0&take=10&search=laptop&category=Electronics&min_price=100&max_price=1000&in_stock=true"
+
+# Get All Products - No filters
+curl -X GET "http://localhost:3000/api/products"
+
+# Get Product by ID
+curl -X GET http://localhost:3000/api/products/1
+
+# Get All Categories
+curl -X GET http://localhost:3000/api/products/categories/all
+
+# Create New Product
+curl -X POST http://localhost:3000/api/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test Product",
+    "description": "This is a test product",
+    "price": 99.99,
+    "category": "Test"
+  }'
+
+# Update Product
+curl -X PUT http://localhost:3000/api/products/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Product Name",
+    "price": 129.99
+  }'
+
+# Delete Product
+curl -X DELETE http://localhost:3000/api/products/1
+
+# Get All Stock Movements
+curl -X GET "http://localhost:3000/api/stock-movements?start=0&take=10&start_date=2023-01-01&end_date=2023-12-31&movement_type=in"
+
+# Create Stock Movement (In)
+curl -X POST http://localhost:3000/api/stock-movements \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_id": 1,
+    "quantity": 10,
+    "movement_type": "in",
+    "notes": "Restock"
+  }'
+
+# Create Stock Movement (Out)
+curl -X POST http://localhost:3000/api/stock-movements \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_id": 1,
+    "quantity": 5,
+    "movement_type": "out",
+    "notes": "Sale"
+  }'
+
+# Get Popular Products
+curl -X GET "http://localhost:3000/api/stock-movements/popular?start=0&take=5"
+
+# Get Current Stock
+curl -X GET http://localhost:3000/api/metrics/current-stock
+
+# Get Stock Movements Summary
+curl -X GET "http://localhost:3000/api/metrics/stock-movements?start_date=2023-01-01&end_date=2023-12-31"
+
+# Get Overall Stock Summary
+curl -X GET "http://localhost:3000/api/metrics/summary?start_date=2023-01-01&end_date=2023-12-31"

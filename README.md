@@ -27,6 +27,36 @@ O sistema deve incluir visualizações básicas dos dados de estoque, como:
 - Quantidade total de itens vendidos
 - Dashboard simples com os produtos mais movimentados
 
+## Componentes da Solução
+
+### Backend
+
+O backend foi implementado em TypeScript usando Express e Knex para interagir com o banco de dados PostgreSQL. Para mais detalhes, consulte o [README do backend](./backend/README.md).
+
+### Frontend
+
+O frontend foi desenvolvido em React utilizando componentes modernos e responsivos. Para mais detalhes, consulte o [README do frontend](./frontend/README.md).
+
+### Agente de IA
+
+O Agente de IA foi implementado como um serviço separado que entende comandos em linguagem natural em português brasileiro. Ele permite:
+
+- Consultar vendas totais com filtros por período, produto ou categoria
+- Visualizar produtos mais populares
+- Verificar o estoque atual
+- Obter resumo de métricas
+- Registrar movimentações de estoque
+
+Para mais detalhes, consulte o [README do agente](./agent/README.md).
+
+#### Exemplos de Comandos:
+
+- "Mostrar vendas totais do mês atual"
+- "Obter vendas totais do produto 5"
+- "Ver produtos mais populares"
+- "Mostrar estoque atual"
+- "Registrar entrada de 10 unidades do produto 2"
+
 ## Processo de Submissão
 
 1. Faça um fork deste repositório.
