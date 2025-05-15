@@ -11,8 +11,13 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=postgres://postgres:postgres@db:5432/stock_management
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
+    command: >
+      sh -c "npm run migrate &&
+             npm run seed &&
+             npm start"
 
   # Database
   db:
@@ -25,6 +30,12 @@ services:
       - POSTGRES_DB=stock_management
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   # Ollama AI Service
@@ -42,6 +53,12 @@ services:
           memory: 4G
     restart: unless-stopped
     command: serve
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
 
   # AI Agent Service
   agent:
@@ -51,7 +68,7 @@ services:
       - "3003:3003"
     depends_on:
       ollama:
-        condition: service_started
+        condition: service_healthy
       backend:
         condition: service_started
     environment:

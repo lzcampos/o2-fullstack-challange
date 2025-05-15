@@ -69,6 +69,18 @@ docker-compose up -d frontend
 docker-compose up -d ollama agent
 ```
 
+### Configuração do Banco de Dados
+
+O banco de dados PostgreSQL é inicializado automaticamente com as tabelas necessárias através de dois mecanismos:
+
+1. **Scripts de Inicialização**: O arquivo `backend/init-scripts/init.sql` é executado quando o container do PostgreSQL é iniciado pela primeira vez, criando as tabelas básicas e funções necessárias.
+
+2. **Migrações e Seeds**: Quando o backend inicia, ele executa:
+   - `npm run migrate` - Para aplicar as migrações pendentes usando Knex
+   - `npm run seed` - Para popular o banco de dados com dados iniciais
+
+Este processo garante que o banco de dados esteja sempre no estado correto e com dados de exemplo para testes.
+
 ## Acessando os Serviços
 
 - **Frontend**: http://localhost:3001
@@ -168,6 +180,25 @@ docker-compose logs backend
 
 # Verificar se o PostgreSQL está rodando
 docker-compose ps db
+
+# Acessar o banco de dados diretamente
+docker-compose exec db psql -U postgres -d stock_management
+
+# Reiniciar o processo de migração manualmente
+docker-compose exec backend npm run migrate
+docker-compose exec backend npm run seed
+```
+
+### Problemas com Migrações ou Seeds
+
+```bash
+# Verificar logs específicos das migrações
+docker-compose logs backend | grep migrate
+
+# Reimplantar o banco de dados do zero
+docker-compose down -v  # Remove volumes
+docker-compose up -d db # Inicia apenas o banco
+docker-compose up -d    # Inicia os demais serviços
 ```
 
 ## Desenvolvimento
@@ -178,6 +209,9 @@ docker-compose ps db
 .
 ├── agent/               # Código do agente IA
 ├── backend/             # Código do backend
+│   ├── init-scripts/    # Scripts SQL para inicialização do banco
+│   ├── migrations/      # Migrações Knex
+│   └── seeds/           # Seeds para popular o banco de dados
 ├── frontend/            # Código do frontend
 ├── docker-compose.yml   # Configuração Docker Compose
 └── start.sh             # Script de inicialização
@@ -191,6 +225,8 @@ Para desenvolver localmente sem Docker, cada serviço pode ser iniciado separada
 ```bash
 cd backend
 npm install
+npm run migrate
+npm run seed
 npm run dev
 ```
 
