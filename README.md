@@ -1,74 +1,216 @@
-# O2 Fullstack Challenge
+# Sistema de Gerenciamento de Estoque com IA
 
-Bem-vindo ao desafio de Fullstack da O2 Inc.! Estamos felizes por você estar interessado em se juntar à nossa equipe. Este repositório contém todas as instruções e requisitos necessários para a conclusão do desafio. 
+Um sistema para gestão de estoque com backend, frontend e um agente de IA para consultas em linguagem natural.
 
-## Sobre a O2 Inc.
+Como LLM, usei o modelo Qween3:0.6b. É um modelo bem "pequeno", e o motivo dessa escolha é que preciso rodar todos os cálculos na CPU (e não na GPU).
 
-Estamos construindo uma nova área de tecnologia e engenharia na O2 Inc., focada em criar uma cultura de desenvolvimento colaborativo. Nosso objetivo é formar um time de engenharia onde cada membro esteja dedicado a se desenvolver, trazer ideias inovadoras e ter a oportunidade de crescer profissionalmente. Valorizamos a criatividade, a inovação e o aprendizado contínuo.
+Se você quiser usar outro modelo mais robusto, rodando na GPU, provavelmente basta trocar os valores de configuração no projeto do agente (variáveis de configuração, dockerfile, etc.)!
 
-## Sobre o Desafio
+## Arquitetura do Sistema
 
-O objetivo deste desafio é desenvolver um sistema de gestão de estoque que permita o cadastro de produtos, registro de movimentações de estoque e geração de relatórios. Queremos avaliar suas habilidades em design de aplicação, qualidade do código, arquitetura e documentação.
+O sistema é composto por três serviços principais:
 
-## Tecnologias Requeridas
+1. **Backend API**: Responsável por gerenciar dados de produtos, estoque e movimentações
+2. **Frontend**: Interface de usuário para visualização e controle do estoque
+3. **Agente IA**: Serviço para processar consultas em linguagem natural sobre estoque e vendas
 
-- **Front-end:** React
-- **Back-end:** TypeScript, Python, Java ou a linguagem de sua preferência, desde que acompanhada de um README detalhado explicando o funcionamento da aplicação.
-- **Banco de Dados:** Banco de dados relacional (MySQL, PostgreSQL, etc.)
-- **Agente IA:** Um agente simples capaz de:
-  - Consultar o total de vendas em um determinado período
-  - Realizar cadastro de novas movimentações de estoque através de comandos em linguagem natural
-
-## Visualização de Dados
-
-O sistema deve incluir visualizações básicas dos dados de estoque, como:
-- Gráfico de barras mostrando o valor total de vendas por período
-- Resumo do valor total em estoque (R$)
-- Quantidade total de itens vendidos
-- Dashboard simples com os produtos mais movimentados
-
-## Componentes da Solução
+## Tecnologias Utilizadas
 
 ### Backend
-
-O backend foi implementado em TypeScript usando Express e Knex para interagir com o banco de dados PostgreSQL. Para mais detalhes, consulte o [README do backend](./backend/README.md).
+- **Linguagem**: TypeScript/Node.js
+- **Framework**: Express
+- **Database**: PostgreSQL
+- **ORM**: Knex.js
 
 ### Frontend
+- **Framework**: React
+- **UI Library**: Material UI
+- **Gráficos**: Chart.js
+- **Gerenciamento de Estado**: React Context API
 
-O frontend foi desenvolvido em React utilizando componentes modernos e responsivos. Para mais detalhes, consulte o [README do frontend](./frontend/README.md).
+### Agente IA
+- **Linguagem**: TypeScript/Node.js
+- **Framework**: Express
+- **Modelo de IA**: Qwen3 via Ollama
+- **Processamento de Linguagem Natural**: Utiliza o modelo Qwen3:0.6b para interpretação de comandos
 
-### Agente de IA
+## Como Iniciar
 
-O Agente de IA foi implementado como um serviço separado que entende comandos em linguagem natural em português brasileiro. Ele permite:
+### Método Simples (Docker Compose)
 
-- Consultar vendas totais com filtros por período, produto ou categoria
-- Visualizar produtos mais populares
-- Verificar o estoque atual
-- Obter resumo de métricas
-- Registrar movimentações de estoque
+Utilizando o script de inicialização:
 
-Para mais detalhes, consulte o [README do agente](./agent/README.md).
+```bash
+# Tornar o script executável (se necessário)
+chmod +x start.sh
 
-#### Exemplos de Comandos:
+# Iniciar todos os serviços
+./start.sh
+```
 
+Este script:
+1. Para containers existentes
+2. Inicia todos os serviços via Docker Compose
+3. Mostra URLs para acessar os diferentes componentes
+
+### Inicialização Manual
+
+```bash
+# Iniciar todos os serviços com Docker Compose
+docker-compose up -d
+
+# Iniciar apenas o backend
+docker-compose up -d backend
+
+# Iniciar apenas o frontend
+docker-compose up -d frontend
+
+# Iniciar apenas o agente IA com Ollama
+docker-compose up -d ollama agent
+```
+
+## Acessando os Serviços
+
+- **Frontend**: http://localhost:3001
+- **Backend API**: http://localhost:3000
+- **Agente IA**: http://localhost:3003
+- **Ollama API**: http://localhost:11434
+
+## Endpoints da API
+
+### Backend API
+
+#### Produtos
+
+- `GET /api/products` - Lista todos os produtos
+- `GET /api/products/:id` - Obtém um produto específico
+- `POST /api/products` - Cria um novo produto
+- `PUT /api/products/:id` - Atualiza um produto
+- `DELETE /api/products/:id` - Remove um produto
+
+#### Movimentações de Estoque
+
+- `GET /api/stock-movements` - Lista todas as movimentações
+- `GET /api/stock-movements/:id` - Obtém uma movimentação específica
+- `POST /api/stock-movements` - Registra uma nova movimentação
+- `GET /api/stock-movements/popular` - Lista produtos mais populares
+
+#### Métricas
+
+- `GET /api/metrics/summary` - Resumo geral (valores em estoque, vendas)
+- `GET /api/metrics/stock-movements` - Dados de movimentação de estoque
+
+### Agente IA API
+
+- `POST /api/query` - Processa consultas em linguagem natural
+  ```json
+  {
+    "query": "Mostrar vendas totais do mês atual"
+  }
+  ```
+
+## Funcionalidades do Agente IA
+
+O agente IA pode processar dois tipos principais de comandos:
+
+### 1. Consulta de Vendas (`getSales`)
+
+Exemplos de comandos:
 - "Mostrar vendas totais do mês atual"
-- "Obter vendas totais do produto 5"
-- "Ver produtos mais populares"
-- "Mostrar estoque atual"
+- "Mostrar vendas do produto 1"
+- "Mostrar vendas de janeiro"
+
+### 2. Registro de Movimentações (`createStockMovement`)
+
+Exemplos de comandos:
 - "Registrar entrada de 10 unidades do produto 2"
+- "Registrar saída de 5 unidades do produto 3"
+- "Adicionar 20 unidades do produto 1 ao estoque"
 
-## Processo de Submissão
+## Interface do Usuário
 
-1. Faça um fork deste repositório.
-2. Implemente a solução conforme descrito no arquivo [DESAFIO.md](https://github.com/O2-Tech/o2-fullstack-challange/blob/main/DESAFIO.md).
-3. Garanta que todas as dependências e instruções de configuração estejam claramente documentadas.
-4. Envie o link do seu repositório forkado para avaliação.
+O frontend possui as seguintes seções:
 
-## Dúvidas?
+1. **Dashboard**: Visão geral do estoque e vendas
+2. **Produtos**: Gerenciamento de produtos
+3. **Estoque**: Movimentações e status atual
+4. **Chat IA**: Assistente virtual para consultas via chat
 
-Se você tiver qualquer dúvida durante o processo de implementação, sinta-se à vontade para entrar em contato comigo através do [LinkedIn](https://www.linkedin.com/in/jgabrielfreitas/).
+## Troubleshooting
 
-## Boa sorte!
+### Container Ollama Não Inicializa
 
-Estamos ansiosos para ver seu trabalho e discutir seu potencial para se juntar à nossa equipe. 
-Boa sorte!
+Se o container Ollama não inicializar corretamente:
+
+```bash
+# Verificar logs
+docker-compose logs ollama
+
+# Verificar se o Ollama tem memória suficiente
+# Edite docker-compose.yml para ajustar recursos se necessário
+```
+
+### Modelo Qwen3 Não Carrega
+
+```bash
+# Verificar status dos modelos
+docker-compose exec ollama ollama list
+
+# Baixar o modelo manualmente
+docker-compose exec ollama ollama pull qwen3:0.6b
+```
+
+### Backend não conecta ao banco de dados
+
+```bash
+# Verificar logs
+docker-compose logs backend
+
+# Verificar se o PostgreSQL está rodando
+docker-compose ps db
+```
+
+## Desenvolvimento
+
+### Estrutura do Projeto
+
+```
+.
+├── agent/               # Código do agente IA
+├── backend/             # Código do backend
+├── frontend/            # Código do frontend
+├── docker-compose.yml   # Configuração Docker Compose
+└── start.sh             # Script de inicialização
+```
+
+### Desenvolvimento Local (Sem Docker)
+
+Para desenvolver localmente sem Docker, cada serviço pode ser iniciado separadamente:
+
+#### Backend
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+#### Frontend
+```bash
+cd frontend
+npm install
+npm start
+```
+
+#### Agent
+```bash
+cd agent
+npm install
+npm run dev
+
+# Em outra janela do terminal
+ollama run qwen3:0.6b
+```
+
+## Licença
+
+MIT
