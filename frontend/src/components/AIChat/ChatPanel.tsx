@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { FC } from 'react';
 import {
   Box,
   Paper,
@@ -28,7 +29,7 @@ import ChatBubble, { Message } from './ChatBubble';
 import { v4 as uuidv4 } from 'uuid';
 
 // Command types that can be recognized
-type CommandType = 'SALES' | 'POPULAR' | 'STOCK' | 'METRICS' | 'MOVEMENT' | 'UNKNOWN';
+type CommandType = 'getSales' | 'createStockMovement' | 'UNKNOWN';
 
 interface Command {
   type: CommandType;
@@ -37,33 +38,15 @@ interface Command {
   color: string;
 }
 
-const COMMANDS: Record<CommandType, Command> = {
-  SALES: {
-    type: 'SALES',
+const COMMANDS: Record<CommandType | string, Command> = {
+  getSales: {
+    type: 'getSales',
     description: 'Consulta de Vendas',
     icon: <BarChartIcon fontSize="small" />,
     color: '#1976d2',
   },
-  POPULAR: {
-    type: 'POPULAR',
-    description: 'Produtos Populares',
-    icon: <SearchIcon fontSize="small" />,
-    color: '#9c27b0',
-  },
-  STOCK: {
-    type: 'STOCK',
-    description: 'Consulta de Estoque',
-    icon: <SearchIcon fontSize="small" />,
-    color: '#2e7d32',
-  },
-  METRICS: {
-    type: 'METRICS',
-    description: 'Resumo de Métricas',
-    icon: <BarChartIcon fontSize="small" />,
-    color: '#ed6c02',
-  },
-  MOVEMENT: {
-    type: 'MOVEMENT',
+  createStockMovement: {
+    type: 'createStockMovement',
     description: 'Registro de Movimento',
     icon: <PostAddIcon fontSize="small" />,
     color: '#0288d1',
@@ -78,14 +61,28 @@ const COMMANDS: Record<CommandType, Command> = {
 
 // Keywords for matching different command types
 const COMMAND_KEYWORDS = {
-  SALES: ['venda', 'vendas', 'valor total', 'faturamento'],
-  POPULAR: ['popular', 'mais vendido', 'top produto'],
-  STOCK: ['estoque', 'quantidade', 'inventário', 'produto'],
-  METRICS: ['métrica', 'resumo', 'estatística', 'dados'],
-  MOVEMENT: ['registrar', 'movimento', 'entrada', 'saída', 'adicionar', 'remover'],
+  getSales: ['venda', 'vendas', 'valor total', 'faturamento', 'compra'],
+  createStockMovement: ['registrar', 'movimento', 'entrada', 'saída', 'adicionar', 'remover', 'estoque']
 };
 
-const ChatPanel: React.FC = () => {
+// Helper functions for formatting
+const formatCurrency = (value: number): string => {
+  if (!value && value !== 0) return '0,00';
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const formatDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('pt-BR');
+  } catch (e) {
+    return dateStr;
+  }
+};
+
+const ChatPanel: FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -167,8 +164,7 @@ const ChatPanel: React.FC = () => {
     
     // If no specific command was identified, try to guess from context
     if (queryLower.includes('mostrar') || queryLower.includes('exibir') || queryLower.includes('consultar')) {
-      if (queryLower.includes('produto')) return 'STOCK';
-      if (queryLower.includes('vend')) return 'SALES';
+      if (queryLower.includes('venda') || queryLower.includes('valor')) return 'getSales';
     }
     
     return 'UNKNOWN';
@@ -177,8 +173,8 @@ const ChatPanel: React.FC = () => {
   const handleSend = async () => {
     if (!inputText.trim() || isLoading || !isAgentAvailable) return;
 
-    const commandType = identifyCommandType(inputText);
-    const command = COMMANDS[commandType];
+    // Initial command type guess based on input text
+    let commandType: CommandType = identifyCommandType(inputText);
 
     const userMessage: Message = {
       id: uuidv4(),
@@ -192,104 +188,56 @@ const ChatPanel: React.FC = () => {
     setIsLoading(true);
 
     try {
-      console.log(`Sending query to agent: ${inputText}, detected command: ${commandType}`);
+      console.log(`Sending query to agent: ${inputText}, initial guess: ${commandType}`);
       const response = await AIAgentService.sendQuery(inputText);
       console.log('Received response:', response);
       
-      let messageText = '';
-      
-      // Create the formatted text with a header showing the command executed
-      messageText = `${getCommandHeader(commandType, !response.data.error)}`;
-      
-      // Add status message
-      if (response.data.error) {
-        messageText += `\n\n❌ ${response.data.error}`;
-      } else {
-        messageText += `\n\n✅ ${response.message || 'Comando processado com sucesso'}`;
+      // Use the actual action from the agent response if available
+      if (response.action && COMMANDS[response.action]) {
+        commandType = response.action as CommandType;
+        console.log(`Updated command type from agent response: ${commandType}`);
       }
       
-      // Prepare raw data for visualization
-      let rawData = response.data;
+      const command = COMMANDS[commandType] || COMMANDS.UNKNOWN;
       
-      // For some API responses, the actual data might be nested inside a data property
-      if (response.data && response.data.data && !response.data.error) {
-        if (Array.isArray(response.data.data) || typeof response.data.data === 'object') {
-          rawData = response.data.data;
-        }
-      }
+      // Process the response from the agent
+      const messageText = response.message;
       
-      // For "Mostrar vendas" command, do additional data extraction if needed
-      if (commandType === 'SALES') {
-        console.log('Sales command response:', response);
-        
-        // If the response has sales-related properties at the top level, pass them directly
-        if (response.data.total_sales !== undefined || 
-            response.data.total !== undefined || 
-            response.data.value !== undefined) {
-          // Data is already correctly structured, no changes needed
-        }
-        // If the data is nested in a 'sales' property, extract it
-        else if (response.data.sales) {
-          rawData = response.data.sales;
-        }
-        // If the data is in a different format, try to extract what we need
-        else {
-          // Look for any property that might contain sales data
-          for (const key in response.data) {
-            if (key.includes('venda') || key.includes('sale') || key.includes('total')) {
-              if (typeof response.data[key] === 'object' && response.data[key] !== null) {
-                rawData = response.data[key];
-                break;
-              }
-            }
-          }
-        }
-      }
+      // Determine if the operation was successful
+      const isSuccess = !response.data.error;
       
-      // Add command metadata for intelligent formatting
-      const metadata = {
-        commandType,
-        commandDescription: command.description,
-        commandColor: command.color,
-        success: !response.data.error,
-        originalQuery: inputText,
-        rawData: rawData,
-      };
-      
-      // If there's specific data, add it to the message
-      if (response.data && !response.data.error) {
-        // For pure JSON responses, limit text output
-        if (typeof response.data === 'object' && !Array.isArray(response.data)) {
-          messageText += '\n\n⚙️ Dados processados com sucesso.';
-        } else {
-          const formattedData = formatResponseData(response.data, commandType);
-          if (formattedData) {
-            messageText += '\n\n' + formattedData;
-          }
-        }
-      }
-      
+      // Create formatted agent message
       const agentMessage: Message = {
         id: uuidv4(),
         type: 'agent',
         text: messageText,
         timestamp: new Date(),
-        metadata,
+        metadata: {
+          commandType,
+          commandDescription: command.description,
+          commandColor: command.color,
+          success: isSuccess,
+          originalQuery: inputText,
+          rawData: response.data,
+        }
       };
 
       setMessages(prev => [...prev, agentMessage]);
     } catch (error) {
-      console.error('Error sending query:', error);
+      console.error('Error communicating with agent:', error);
+      
+      // Add error message
       const errorMessage: Message = {
         id: uuidv4(),
         type: 'agent',
-        text: 'Ocorreu um erro ao processar sua consulta. Tente novamente mais tarde.',
+        text: 'Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.',
         timestamp: new Date(),
         metadata: {
           isError: true,
-          commandType: 'UNKNOWN',
+          commandType
         }
       };
+      
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -300,35 +248,24 @@ const ChatPanel: React.FC = () => {
     const command = COMMANDS[commandType];
     
     switch (commandType) {
-      case 'SALES':
+      case 'getSales':
         return '📊 Comando: Consulta de Vendas';
-      case 'POPULAR':
-        return '🔝 Comando: Produtos Populares';
-      case 'STOCK':
-        return '📦 Comando: Consulta de Estoque';
-      case 'METRICS':
-        return '📈 Comando: Resumo de Métricas';
-      case 'MOVEMENT':
+      case 'createStockMovement':
         return '✏️ Comando: Registro de Movimento';
       default:
         return '❓ Comando Desconhecido';
     }
   };
 
-  const formatResponseData = (data: any, commandType: CommandType): string => {
+  const formatResponseData = (data: any, commandType: CommandType | string): string => {
     if (!data) return '';
     
     try {
+      // Call the appropriate formatter based on command type
       switch (commandType) {
-        case 'SALES':
+        case 'getSales':
           return formatSalesData(data);
-        case 'POPULAR':
-          return formatPopularItemsData(data);
-        case 'STOCK':
-          return formatStockData(data);
-        case 'METRICS':
-          return formatMetricsData(data);
-        case 'MOVEMENT':
+        case 'createStockMovement':
           return formatMovementRegistrationData(data);
         default:
           // For unknown commands or raw JSON, return a simplified result
@@ -341,31 +278,47 @@ const ChatPanel: React.FC = () => {
   };
   
   const formatSalesData = (data: any): string => {
+    if (!data) return '';
+    
     let result = '';
     
-    // If there's a filtered property (for specific product or category)
-    if (data.filtered) {
-      if (data.filtered.product_id) {
-        result += `📋 Produto ID: ${data.filtered.product_id}\n`;
-      }
-      if (data.filtered.category) {
-        result += `🏷️ Categoria: ${data.filtered.category}\n`;
-      }
-      result += `💰 Total de Vendas: R$ ${formatCurrency(data.filtered.total_sales)}\n`;
-      result += `📊 Quantidade Vendida: ${data.filtered.total_quantity} unidades\n`;
-    } else {
-      // General sales data
-      if (data.total_sales) {
-        result += `💰 Total de Vendas: R$ ${formatCurrency(data.total_sales)}\n`;
-      }
-      if (data.total_quantity) {
-        result += `📊 Quantidade Total Vendida: ${data.total_quantity} unidades\n`;
-      }
+    // Check for total_in_value and total_out_value (our new format)
+    if (data.total_in_value !== undefined) {
+      result += `💰 Total de Entradas: R$ ${formatCurrency(data.total_in_value / 100)}\n`;
+    }
+    
+    if (data.total_out_value !== undefined) {
+      result += `💰 Total de Saídas: R$ ${formatCurrency(data.total_out_value / 100)}\n`;
+    }
+    
+    if (data.total_in !== undefined) {
+      result += `📊 Quantidade de Entradas: ${data.total_in} unidades\n`;
+    }
+    
+    if (data.total_out !== undefined) {
+      result += `📊 Quantidade de Saídas: ${data.total_out} unidades\n`;
     }
     
     // Add period information if available
-    if (data.period) {
-      result += `\n📅 Período: ${formatDate(data.period.start_date)} a ${formatDate(data.period.end_date)}\n`;
+    if (data.start_date || data.end_date) {
+      result += '\n📅 Período: ';
+      if (data.start_date) {
+        result += formatDate(data.start_date);
+      } else {
+        result += 'início';
+      }
+      result += ' a ';
+      if (data.end_date) {
+        result += formatDate(data.end_date);
+      } else {
+        result += 'fim';
+      }
+      result += '\n';
+    }
+    
+    // If the response is empty, add a message
+    if (result === '') {
+      result = 'Não foram encontrados dados para esta consulta.';
     }
     
     return result;
@@ -474,32 +427,29 @@ const ChatPanel: React.FC = () => {
   };
   
   const formatMovementRegistrationData = (data: any): string => {
+    if (!data) return '';
+    
     let result = '';
     
-    if (data.success) {
+    // Check if the movement was registered successfully
+    if (data.id) {
       result += '✅ Movimento registrado com sucesso!\n\n';
       
-      if (data.data) {
-        const movement = data.data;
-        
-        result += `🔄 Tipo: ${movement.movement_type === 'in' ? 'Entrada' : 'Saída'}\n`;
-        result += `📋 Produto: ${movement.product_name || 'ID ' + movement.product_id}\n`;
-        result += `📊 Quantidade: ${movement.quantity} unidades\n`;
-        
-        if (movement.date) {
-          result += `📅 Data: ${formatDate(movement.date)}\n`;
-        }
-        
-        if (movement.notes) {
-          result += `📝 Observações: ${movement.notes}\n`;
-        }
-      }
-    } else {
-      result += '❌ Erro ao registrar movimento.\n';
+      result += `🔄 Tipo: ${data.movement_type === 'in' ? 'Entrada' : 'Saída'}\n`;
+      result += `📋 Produto ID: ${data.product_id}\n`;
+      result += `📊 Quantidade: ${data.quantity} unidades\n`;
       
-      if (data.error) {
-        result += `Mensagem: ${data.error}\n`;
+      if (data.created_at) {
+        result += `📅 Data: ${formatDate(data.created_at)}\n`;
       }
+      
+      if (data.notes) {
+        result += `📝 Observações: ${data.notes}\n`;
+      }
+    } else if (data.error) {
+      result += `❌ Erro ao registrar movimento: ${data.error}\n`;
+    } else {
+      result += '❌ Não foi possível registrar o movimento.\n';
     }
     
     return result;
@@ -519,23 +469,6 @@ const ChatPanel: React.FC = () => {
     }
     
     return String(data);
-  };
-  
-  // Helper functions for formatting
-  const formatCurrency = (value: number): string => {
-    if (!value && value !== 0) return '0,00';
-    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
-  
-  const formatDate = (dateStr: string): string => {
-    if (!dateStr) return '';
-    
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('pt-BR');
-    } catch (e) {
-      return dateStr;
-    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -10,13 +10,13 @@ export enum MessageType {
 }
 
 // Command types that can be recognized
-export type CommandType = 'SALES' | 'POPULAR' | 'STOCK' | 'METRICS' | 'MOVEMENT' | 'UNKNOWN';
+export type CommandType = 'getSales' | 'createStockMovement' | 'UNKNOWN';
 
 // Metadata for messages
 export interface MessageMetadata {
   isError?: boolean;
   isGreeting?: boolean;
-  commandType?: CommandType;
+  commandType?: CommandType | string;
   commandDescription?: string;
   commandColor?: string;
   success?: boolean;
@@ -132,9 +132,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
   const getHeaderText = (text: string): string => {
     // For command responses, we'll just show the first line (command header)
     if (metadata?.commandType && !metadata.isGreeting) {
-      const lines = text.split('\n');
+      const lines = text.split('</think>');
       if (lines.length > 0) {
-        return lines[0];
+        return lines[1];
       }
     }
     return text;

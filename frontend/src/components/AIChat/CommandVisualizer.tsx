@@ -21,11 +21,11 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CodeIcon from '@mui/icons-material/Code';
 import { styled } from '@mui/material/styles';
 
-// Command type definition (should match what's in ChatPanel)
-type CommandType = 'SALES' | 'POPULAR' | 'STOCK' | 'METRICS' | 'MOVEMENT' | 'UNKNOWN';
+// Command type definition (should match what's in ChatBubble)
+type CommandType = 'getSales' | 'createStockMovement' | 'UNKNOWN';
 
 interface CommandVisualizerProps {
-  commandType: CommandType;
+  commandType: CommandType | string;
   data: any;
 }
 
@@ -69,15 +69,9 @@ const CommandVisualizer: React.FC<CommandVisualizerProps> = ({ commandType, data
   
   // Choose visualization based on command type
   switch (commandType) {
-    case 'SALES':
+    case 'getSales':
       return <SalesVisualizer data={data} />;
-    case 'POPULAR':
-      return <PopularItemsVisualizer data={data} />;
-    case 'STOCK':
-      return <StockVisualizer data={data} />;
-    case 'METRICS':
-      return <MetricsVisualizer data={data} />;
-    case 'MOVEMENT':
+    case 'createStockMovement':
       return <MovementVisualizer data={data} />;
     default:
       return <JsonVisualizer data={data} />;

@@ -1,0 +1,90 @@
+version: '3'
+
+services:
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/stock_management
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  # Database
+  db:
+    image: postgres:14
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=stock_management
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Ollama AI Service
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+    restart: unless-stopped
+    command: serve
+
+  # AI Agent Service
+  agent:
+    build:
+      context: ./agent
+    ports:
+      - "3003:3003"
+    depends_on:
+      ollama:
+        condition: service_started
+      backend:
+        condition: service_started
+    environment:
+      - PORT=3003
+      - BACKEND_API_URL=http://backend:3000
+      - OLLAMA_API_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen3:0.6b
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for Ollama to be fully initialized..."
+        sleep 15
+        echo "Pulling Qwen3 model..."
+        curl -X POST http://ollama:11434/api/pull -d '{"name": "qwen3:0.6b"}'
+        echo "Starting agent..."
+        npm start
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - REACT_APP_API_URL=http://localhost:3000/api
+      - REACT_APP_AGENT_API_URL=http://localhost:3003
+    depends_on:
+      - backend
+      - agent
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  ollama_data: 

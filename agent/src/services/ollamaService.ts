@@ -131,6 +131,9 @@ Para createStockMovement, os parâmetros possíveis são:
 - movement_type ("in" para entrada, "out" para saída)
 - notes (texto)
 
+Para parâmetros de data, considere o mês atual como o mês de referência.
+Se o usuário não especificar uma data, considere o mês atual, no ano atual. Estamos em Maio de 2025.
+
 Exemplos de entradas e saídas esperadas:
 
 Entrada: "Mostre as vendas totais do mês de janeiro"
