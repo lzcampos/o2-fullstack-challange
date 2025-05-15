@@ -1,98 +1,189 @@
-# AI Agent for Stock Management System
+# Agente de IA para Gerenciamento de Estoque
 
-## Overview
-This agent provides natural language processing capabilities for a stock management system, enabling users to interact with the application using everyday language.
+Um agente de inteligência artificial que processa consultas em linguagem natural para obter dados de vendas e realizar movimentações de estoque.
 
-## Architecture & Features
+## Funcionalidades
 
-The AI agent employs a hybrid approach to natural language processing:
+- Consultar vendas totais em um período específico
+- Registrar novas movimentações de estoque (entradas e saídas)
+- Processamento de linguagem natural em português
+- Integração com API de backend para operações de estoque
 
-1. **Hugging Face LLM Intent Classification**: 
-   - Primary method for classifying user intent
-   - Uses the `google/flan-t5-small` model for efficient, lightweight classification
-   - Processes Portuguese language queries to determine user intent
+## Tecnologias Utilizadas
 
-2. **Rule-Based Pattern Matching**:
-   - Serves as both a fallback mechanism and parameter extraction system
-   - Uses predefined patterns and regex to identify commands and extract structured data
-   - Provides reliability when the LLM might struggle with specific extractions
+- Node.js com TypeScript
+- Express para o servidor API
+- Ollama com modelo personalizado baseado em Mistral para processamento de linguagem natural
+- Docker para containerização
 
-3. **Parameter Extraction**:
-   - Extracts dates, product IDs, quantities, and other parameters using regex
-   - Handles time periods like "este mês", "semana atual", etc.
-   - Combines LLM and rule-based approaches for optimal accuracy
+## Requisitos
 
-4. **Fault Tolerance**:
-   - Automatically falls back to rule-based processing if LLM fails
-   - Ensures system reliability even when external services are unavailable
+- Docker e Docker Compose
+- Node.js (v14+)
+- npm ou yarn
 
-## Advantages
-- **Fast Response Times**: Efficient processing with lightweight models
-- **Robust Parameter Extraction**: Combines AI with deterministic rules
-- **Graceful Degradation**: System continues functioning even if LLM service is unavailable
-- **Easy Extensibility**: New patterns and rules can be added without retraining
+## Modelo de IA Personalizado
 
-## Supported Commands
+Este agente utiliza um **modelo personalizado** baseado no Mistral através do Ollama. O modelo é criado automaticamente durante a inicialização dos containers Docker, usando o `Modelfile` incluído.
 
-The agent can interpret the following types of commands:
+Para criar o modelo manualmente:
 
-1. **GET_TOTAL_SALES**: Query sales data for specific periods
-   - Example: "Mostrar vendas totais do mês atual"
-   - Example: "Quanto foi o faturamento da semana passada?"
+```bash
+./scripts/create-model.sh
+```
 
-2. **GET_POPULAR_ITEMS**: Find the most popular or best-selling products
-   - Example: "Quais são os produtos mais vendidos?"
-   - Example: "Mostrar itens populares" 
+Para verificar os modelos disponíveis:
 
-3. **GET_STOCK**: Check current inventory levels
-   - Example: "Mostrar estoque atual"
-   - Example: "Qual o estoque do produto 5?"
+```bash
+./scripts/check-models.sh
+```
 
-4. **GET_METRICS**: View overall business metrics and statistics
-   - Example: "Mostrar métricas de vendas"
-   - Example: "Exibir dashboard de desempenho"
+## Configuração e Instalação
 
-5. **REGISTER_MOVEMENT**: Register inventory movements (in/out)
-   - Example: "Registrar entrada de 10 unidades do produto 2"
-   - Example: "Adicionar saída de 5 itens do produto 3"
+### 1. Configuração do Ambiente
 
-## Setup & Installation
+Copie o arquivo de exemplo de ambiente e ajuste conforme necessário:
 
-1. Clone the repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Create a `.env` file based on `.env.example`
-   - Make sure to add your Hugging Face API token
-4. Start the server:
-   ```
-   npm run dev
-   ```
+```bash
+cp .env.example .env
+```
 
-## API Endpoints
+### 2. Iniciando com Docker
 
-- **GET /health**: Check if the server is running
-- **POST /agent/query**: Send a natural language query to the agent
+**Método Recomendado**:
+
+Usamos um script especial para iniciar os containers na ordem correta e garantir que o Ollama esteja pronto antes de iniciar o agente:
+
+```bash
+./scripts/start-docker.sh
+```
+
+Este script:
+1. Para todos os containers existentes
+2. Inicia apenas o container Ollama
+3. Aguarda a inicialização completa do Ollama (60 segundos)
+4. Cria o modelo personalizado baseado no Modelfile
+5. Inicia o container do agente
+
+**Método Alternativo**:
+
+Se preferir usar o Docker Compose diretamente:
+
+```bash
+docker-compose up -d
+```
+
+Isso iniciará:
+- Container Ollama: Rodando na porta 11434
+- Container do Agente: Rodando na porta 3003
+
+> **Nota**: O Docker Compose está configurado para criar o modelo personalizado automaticamente. A primeira inicialização pode demorar alguns minutos enquanto o modelo Mistral é baixado.
+
+### 3. Instalação Manual (Desenvolvimento)
+
+Se preferir rodar localmente:
+
+```bash
+# Instalar dependências
+npm install
+
+# Copiar arquivo de ambiente
+cp .env.example .env
+
+# Iniciar o Ollama em um terminal separado
+docker run -p 11434:11434 ollama/ollama
+
+# Em outro terminal, criar o modelo personalizado
+./scripts/create-model.sh
+
+# Compilar o código TypeScript
+npm run build
+
+# Iniciar o servidor
+npm start
+
+# Alternativamente, para desenvolvimento com hot reload
+npm run dev
+```
+
+**Nota:** Você precisa garantir que o modelo personalizado esteja disponível no Ollama antes de iniciar o agente.
+
+## Uso do Agente
+
+O agente expõe um endpoint API que aceita consultas em linguagem natural:
+
+- **Endpoint:** `POST /api/query`
+- **Formato do corpo da requisição:**
   ```json
   {
-    "query": "Mostrar vendas totais deste mês"
+    "query": "Sua consulta em linguagem natural aqui"
+  }
+  ```
+- **Formato da resposta:**
+  ```json
+  {
+    "response": "Resposta em linguagem natural",
+    "action": "Ação executada pelo agente",
+    "data": { ... } // Dados retornados, quando aplicável
   }
   ```
 
-## Example Usage
-```typescript
-// Client-side example
-const response = await fetch('http://localhost:3333/api/agent/query', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    query: "Qual o estoque atual do produto 5?"
-  }),
-});
+### Exemplos de Consultas
 
-const data = await response.json();
-console.log(data);
-``` 
+- "Mostrar vendas totais do mês atual"
+- "Obter vendas totais do produto 5"
+- "Ver produtos mais populares"
+- "Mostrar estoque atual"
+- "Registrar entrada de 10 unidades do produto 2"
+- "Registrar saída de 5 unidades do produto 3 como venda"
+
+### Testando o Agente
+
+Incluímos um script de teste para facilitar a interação com o agente:
+
+```bash
+# Compilar o código primeiro se ainda não o tiver feito
+npm run build
+
+# Executar o script de teste interativo
+npm run test:client
+
+# Ou usando o cliente HTTP simples
+npm run test:http
+```
+
+O script permite escolher entre exemplos pré-definidos ou inserir suas próprias consultas.
+
+## Arquitetura
+
+O agente é composto por:
+
+1. **API Express**: Recebe e responde às consultas
+2. **Serviço de Análise NLP**: Interpreta consultas em linguagem natural
+3. **Serviço de Backend**: Comunica-se com a API do sistema de estoque
+4. **Ollama com Modelo Personalizado**: Modelo customizado para o domínio de gerenciamento de estoque
+
+## Solução de Problemas
+
+- **Erro "model 'stockagent' not found"**: O modelo personalizado não foi criado. Execute:
+  ```bash
+  ./scripts/create-model.sh
+  ```
+
+- **Erro "container is unhealthy"**: Pode ocorrer se o Ollama não inicializar corretamente. Use o script alternativo:
+  ```bash
+  ./scripts/start-docker.sh
+  ```
+
+- **Erro de conexão com Ollama**: Verifique se o container Ollama está rodando:
+  ```bash
+  docker ps | grep ollama
+  ```
+
+- **Erro de conexão com o Backend**: Verifique se o servidor backend está rodando na porta 3000
+
+- **Tempo de resposta longo**: O primeiro uso do modelo pode ser mais lento devido ao carregamento
+
+- **Formato incorreto de datas**: Use o formato YYYY-MM-DD nas consultas para melhores resultados
+
+Para informações mais detalhadas sobre solução de problemas, consulte o arquivo [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

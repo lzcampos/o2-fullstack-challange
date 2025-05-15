@@ -1,22 +1,18 @@
 FROM node:18-alpine
 
-# Create app directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies
 RUN npm install
 
-# Copy source code
 COPY . .
 
-# Build TypeScript code
+# Install curl for health checks and model creation
+RUN apk add --no-cache curl
+
 RUN npm run build
 
-# Expose port
-EXPOSE 3002
+EXPOSE 3003
 
-# Start the application
-CMD ["npm", "start"]
+CMD ["npm", "start"] 

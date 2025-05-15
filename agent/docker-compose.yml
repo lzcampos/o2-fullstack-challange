@@ -1,13 +1,18 @@
-version: '3'
-
 services:
-  ai-agent:
-    build: .
-    container_name: ai-agent
+  ollama:
+    image: ollama/ollama:latest
     ports:
-      - "3002:3002"
-    environment:
-      - PORT=3002
-      - API_BASE_URL=${API_BASE_URL:-http://localhost:3000/api}
-      - NODE_ENV=${NODE_ENV:-development}
-    restart: unless-stopped 
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+    restart: unless-stopped
+    command: serve
+
+volumes:
+  ollama_data: 
